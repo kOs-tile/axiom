@@ -1,0 +1,86 @@
+version: "3.9"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AXIOM — Docker Compose
+#
+# Services:
+#   postgres   — PostgreSQL 15 + pgvector extension
+#   redis      — Redis 7 for caching and job queuing
+#   axiom      — The AXIOM FastAPI application
+#
+# Usage:
+#   docker compose up --build
+#   docker compose up -d          # detached mode
+#   docker compose logs -f axiom  # follow logs
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── PostgreSQL + pgvector ────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: axiom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-axiom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-axiompass}
+      POSTGRES_DB: ${POSTGRES_DB:-axiom}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-axiom}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: axiom-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── AXIOM Application ─────────────────────────────────────────────────────
+  axiom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: axiom-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override Supabase to use local postgres
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-axiom}:${POSTGRES_PASSWORD:-axiompass}@postgres:5432/${POSTGRES_DB:-axiom}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./skills:/app/skills  # Mount local Hermes skill directory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  redis_data:
