@@ -319,3 +319,23 @@ def run():
         assert report.skill_name == skill.name
         assert report.evaluated_at is not None
         assert report.pass_rate >= 0.0
+
+
+def test_restricted_attribute_guard_blocks_dunder():
+    from axiom.sandbox.evaluator import SAFE_GLOBALS
+
+    with pytest.raises(AttributeError):
+        SAFE_GLOBALS["_getattr_"]([], "__class__")
+
+
+def test_restricted_getitem_blocks_reflective_keys():
+    from axiom.sandbox.evaluator import SAFE_GLOBALS
+
+    with pytest.raises(KeyError):
+        SAFE_GLOBALS["_getitem_"]({"__class__": "nope"}, "__class__")
+
+
+def test_inplacevar_performs_supported_operation():
+    from axiom.sandbox.evaluator import SAFE_GLOBALS
+
+    assert SAFE_GLOBALS["_inplacevar_"]("+=", 2, 3) == 5
