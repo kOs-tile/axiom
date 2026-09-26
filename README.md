@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![DeepSeek V3](https://img.shields.io/badge/Synthesizer-DeepSeek--V3-6B35FF?logo=openai&logoColor=white)](https://deepseek.com)
-[![Hermes Compatible](https://img.shields.io/badge/Hermes-compatible-FF6B35)](https://github.com/onurkavi)
+[![Hermes Compatible](https://img.shields.io/badge/Hermes-compatible-FF6B35)](https://github.com/kOs-tile)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Living skill marketplace and autonomous skill synthesizer for the Hermes / Kavi Claw agent framework.**
@@ -448,4 +448,4 @@ Key settings:
 
 ## License
 
-MIT © [Onur Kavi](https://github.com/onurkavi)
+MIT © [Onur Kavi](https://github.com/kOs-tile)
