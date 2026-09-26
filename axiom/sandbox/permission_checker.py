@@ -22,42 +22,25 @@ from loguru import logger
 
 ALLOWED_IMPORTS: frozenset[str] = frozenset(
     {
-        # Standard library — safe
+        # Keep the in-process sandbox TCB deliberately small. Expanded data
+        # libraries belong in a separate process/container executor.
         "math",
         "statistics",
         "datetime",
         "collections",
         "itertools",
-        "functools",
-        "operator",
         "re",
-        "string",
-        "textwrap",
         "json",
         "decimal",
         "fractions",
         "random",
         "uuid",
-        "typing",
-        "types",
         "enum",
-        "abc",
         "dataclasses",
         "copy",
-        "pprint",
         "hashlib",
         "base64",
-        "struct",
-        "io",  # BytesIO / StringIO allowed, not file open
-        "time",
         "calendar",
-        # Data processing — safe
-        "numpy",
-        "pandas",
-        "scipy",
-        # Formatting
-        "tabulate",
-        "jinja2",
     }
 )
 
@@ -105,6 +88,11 @@ FORBIDDEN_MODULES: frozenset[str] = frozenset(
         "runpy",
         "builtins",
         "__builtin__",
+        # RestrictedPython 8.2 documents these as unsafe to expose through
+        # unrestricted imports because they can bypass source-level guards.
+        "operator",
+        "functools",
+        "string",
     }
 )
 
@@ -182,9 +170,13 @@ class _PermissionVisitor(ast.NodeVisitor):
                 )
             )
         elif module not in ALLOWED_IMPORTS:
-            # Not in explicit allowlist — warn but don't hard fail
-            self.warnings += 1
-            logger.debug(f"Unlisted module import '{module}' at line {lineno} — warning only")
+            self.violations.append(
+                PermissionViolation(
+                    kind="unapproved_import",
+                    description=f"Import of unapproved module '{module}' is not allowed",
+                    line_number=lineno,
+                )
+            )
 
     def visit_Call(self, node: ast.Call) -> None:
         # Check direct forbidden builtin calls: eval(...), exec(...), etc.
