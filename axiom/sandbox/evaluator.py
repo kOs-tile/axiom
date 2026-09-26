@@ -22,7 +22,6 @@ from typing import Any, Optional
 
 from loguru import logger
 from RestrictedPython import (
-    RestrictedTransformer,
     compile_restricted,
     safe_globals,
 )
