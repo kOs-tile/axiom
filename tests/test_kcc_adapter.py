@@ -1,5 +1,5 @@
 from axiom.integrations.kcc import export_kcc_snapshot, skill_to_mcp_tool
-from axiom.models import IOSchema, SchemaField, Skill, SkillStatus
+from axiom.models import IOSchema, SchemaField, Skill, SkillChain, SkillStatus
 
 
 def make_skill(name: str, status: SkillStatus) -> Skill:
@@ -47,3 +47,54 @@ def test_unknown_python_type_is_preserved_as_extension():
     tool = skill_to_mcp_tool(skill)
     assert "type" not in tool["inputSchema"]["properties"]["payload"]
     assert tool["inputSchema"]["properties"]["payload"]["x-axiom-python-type"] == "PriceFrame"
+
+
+
+def test_ready_skill_can_be_staged_for_kcc_without_authority():
+    skill = make_skill("candidate_transform", SkillStatus.READY_FOR_AUTHORIZATION)
+    bundle = build_kcc_authorization_bundle(
+        [skill],
+        task_description="Transform one bounded payload",
+        ttl_seconds=120,
+    )
+
+    assert [tool["name"] for tool in bundle["snapshot"]["tools"]] == ["candidate_transform"]
+    assert bundle["intent"]["capabilities"] == [
+        "mcp:axiom-skills:candidate_transform"
+    ]
+    assert bundle["intent"]["ttl_seconds"] == 120
+    assert bundle["authorization"]["granted"] is False
+    assert bundle["authorization"]["requires_kcc_compile"] is True
+
+
+def test_kcc_bundle_excludes_failed_or_draft_skills():
+    active = make_skill("active_skill", SkillStatus.ACTIVE)
+    ready = make_skill("ready_skill", SkillStatus.READY_FOR_AUTHORIZATION)
+    failed = make_skill("failed_skill", SkillStatus.SANDBOX_FAILED)
+    draft = make_skill("draft_skill", SkillStatus.DRAFT)
+
+    bundle = build_kcc_authorization_bundle(
+        [failed, draft, ready, active],
+        task_description="Use only evaluated capability candidates",
+    )
+
+    names = [tool["name"] for tool in bundle["snapshot"]["tools"]]
+    assert names == ["active_skill", "ready_skill"]
+    assert len(bundle["intent"]["capabilities"]) == 2
+
+
+def test_skill_chain_bundle_exposes_only_chain_surface():
+    first = make_skill("fetch_bounded", SkillStatus.ACTIVE)
+    second = make_skill("transform_bounded", SkillStatus.READY_FOR_AUTHORIZATION)
+    chain = SkillChain(
+        task_description="Fetch then transform bounded data",
+        skills=[first, second],
+        handoff_map=[{"value": "value"}],
+    )
+
+    bundle = skill_chain_to_kcc_bundle(chain, ttl_seconds=300)
+
+    assert len(bundle["snapshot"]["tools"]) == 2
+    assert bundle["intent"]["constraints"]["axiom_chain_id"] == chain.id
+    assert bundle["intent"]["constraints"]["max_chain_length"] == 2
+    assert bundle["authorization"]["granted"] is False
