@@ -1,5 +1,8 @@
 # AXIOM
 
+> **Status — Legacy research prototype.** AXIOM is preserved as an earlier capability/skill-composition experiment. Active least-authority work has moved to [KAVI Capability Compiler](https://github.com/kOs-tile/kavi-capability-compiler). This repository is not presented as a production security boundary.
+
+
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![DeepSeek V3](https://img.shields.io/badge/Synthesizer-DeepSeek--V3-6B35FF?logo=openai&logoColor=white)](https://deepseek.com)
@@ -128,7 +131,7 @@ User task description
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/onurkavi/axiom
+git clone https://github.com/kOs-tile/axiom
 cd axiom
 cp .env.example .env
 # Edit .env — fill in OPENAI_API_KEY, DEEPSEEK_API_KEY, SUPABASE_URL/keys
