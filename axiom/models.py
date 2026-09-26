@@ -20,6 +20,7 @@ class SkillStatus(str, Enum):
     DRAFT = "draft"
     SANDBOX_PENDING = "sandbox_pending"
     SANDBOX_FAILED = "sandbox_failed"
+    READY_FOR_AUTHORIZATION = "ready_for_authorization"
     ACTIVE = "active"
     DEPRECATED = "deprecated"
     FLAGGED = "flagged"  # decay monitor flagged for review
@@ -47,6 +48,7 @@ class SynthesisStep(str, Enum):
     SANDBOX_SECURITY_SCAN = "sandbox_security_scan"
     SANDBOX_EXECUTION = "sandbox_execution"
     PROMOTING = "promoting"
+    AWAITING_AUTHORIZATION = "awaiting_authorization"
     COMPLETE = "complete"
     FAILED = "failed"
 
