@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from axiom.models import IOSchema, Skill, SkillStatus
+from axiom.models import IOSchema, Skill, SkillChain, SkillStatus
 
 
 _JSON_TYPE_MAP = {
@@ -111,3 +111,89 @@ def export_kcc_snapshot(
         "server": {"name": server_name},
         "tools": [skill_to_mcp_tool(skill) for skill in selected],
     }
+
+
+
+def _kcc_capability_id(skill: Skill, server_name: str) -> str:
+    """Return the deterministic capability ID KCC assigns to this MCP-shaped tool."""
+    return f"mcp:{server_name}:{skill.name}"
+
+
+def build_kcc_authorization_bundle(
+    skills: Iterable[Skill],
+    *,
+    task_description: str,
+    server_name: str = "axiom-skills",
+    ttl_seconds: int = 900,
+    constraints: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Prepare the smallest AXIOM capability surface for KCC compilation.
+
+    A sandbox-passing skill is only code evidence. This bundle deliberately grants
+    no authority. KCC must scan/audit/compile the returned snapshot before an
+    execution capsule exists.
+    """
+    selected = [
+        skill for skill in skills
+        if skill.status in {
+            SkillStatus.ACTIVE,
+            SkillStatus.READY_FOR_AUTHORIZATION,
+        }
+    ]
+    selected.sort(key=lambda skill: (skill.name, skill.id))
+    snapshot = {
+        "server": {"name": server_name},
+        "tools": [skill_to_mcp_tool(skill) for skill in selected],
+    }
+    intent_constraints = {
+        "axiom_skill_ids": [skill.id for skill in selected],
+        "axiom_skill_versions": {
+            skill.id: skill.version for skill in selected
+        },
+    }
+    if constraints:
+        intent_constraints.update(constraints)
+
+    return {
+        "snapshot": snapshot,
+        "intent": {
+            "task": task_description,
+            "capabilities": [
+                _kcc_capability_id(skill, server_name) for skill in selected
+            ],
+            "ttl_seconds": max(1, min(int(ttl_seconds), 86400)),
+            "constraints": intent_constraints,
+        },
+        "authorization": {
+            "granted": False,
+            "requires_kcc_compile": True,
+            "reason": (
+                "AXIOM selected and evaluated capability code; "
+                "execution authority remains a KCC decision."
+            ),
+        },
+    }
+
+
+def skill_chain_to_kcc_bundle(
+    chain: SkillChain,
+    *,
+    server_name: str = "axiom-skills",
+    ttl_seconds: int = 900,
+    constraints: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Convert one composed chain into a least-surface KCC authorization request."""
+    chain_constraints = {
+        "axiom_chain_id": chain.id,
+        "max_chain_length": len(chain.skills),
+        "handoff_map": chain.handoff_map,
+    }
+    if constraints:
+        chain_constraints.update(constraints)
+    return build_kcc_authorization_bundle(
+        chain.skills,
+        task_description=chain.task_description,
+        server_name=server_name,
+        ttl_seconds=ttl_seconds,
+        constraints=chain_constraints,
+    )
