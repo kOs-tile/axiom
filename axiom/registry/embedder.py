@@ -8,9 +8,8 @@ pgvector column for sub-millisecond cosine similarity search.
 from __future__ import annotations
 
 import hashlib
+import math
 from typing import Optional
-
-import numpy as np
 from loguru import logger
 from openai import AsyncOpenAI
 
@@ -97,13 +96,14 @@ class SkillEmbedder:
     @staticmethod
     def cosine_similarity(a: list[float], b: list[float]) -> float:
         """Compute cosine similarity between two embedding vectors."""
-        va = np.array(a, dtype=np.float32)
-        vb = np.array(b, dtype=np.float32)
-        norm_a = np.linalg.norm(va)
-        norm_b = np.linalg.norm(vb)
-        if norm_a == 0 or norm_b == 0:
+        if len(a) != len(b):
+            raise ValueError("embedding vectors must have the same dimensions")
+        dot = math.fsum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(math.fsum(x * x for x in a))
+        norm_b = math.sqrt(math.fsum(y * y for y in b))
+        if norm_a == 0.0 or norm_b == 0.0:
             return 0.0
-        return float(np.dot(va, vb) / (norm_a * norm_b))
+        return dot / (norm_a * norm_b)
 
     @staticmethod
     def build_skill_text(name: str, description: str, tags: list[str]) -> str:
