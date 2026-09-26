@@ -211,17 +211,32 @@ class SkillSynthesizer:
             evaluation = await sandbox_evaluator.evaluate(skill, test_cases)
             steps_completed.extend([SynthesisStep.SANDBOX_SECURITY_SCAN, SynthesisStep.SANDBOX_EXECUTION])
 
-            # ── Step 8: Promote ───────────────────────────────────────────────
+            # ── Step 8: Stage for authority / optional explicit auto-promotion ──
             final_status: str
             if evaluation.promotion_recommended:
-                yield SynthesisProgressEvent(
-                    step=SynthesisStep.PROMOTING,
-                    message="Sandbox passed — promoting skill to ACTIVE registry…",
-                    progress_pct=95,
-                )
-                await skill_store.promote_skill(skill.id)
-                skill.status = SkillStatus.ACTIVE
-                steps_completed.append(SynthesisStep.PROMOTING)
+                if settings.auto_promote_synthesized_skills:
+                    yield SynthesisProgressEvent(
+                        step=SynthesisStep.PROMOTING,
+                        message="Sandbox passed — explicit auto-promotion is enabled; promoting to ACTIVE…",
+                        progress_pct=95,
+                    )
+                    await skill_store.promote_skill(skill.id)
+                    skill.status = SkillStatus.ACTIVE
+                    steps_completed.append(SynthesisStep.PROMOTING)
+                else:
+                    yield SynthesisProgressEvent(
+                        step=SynthesisStep.AWAITING_AUTHORIZATION,
+                        message=(
+                            "Sandbox passed — skill is staged for explicit authorization. "
+                            "Sandbox success does not grant execution authority."
+                        ),
+                        progress_pct=95,
+                    )
+                    await skill_store.update_skill_status(
+                        skill.id, SkillStatus.READY_FOR_AUTHORIZATION
+                    )
+                    skill.status = SkillStatus.READY_FOR_AUTHORIZATION
+                    steps_completed.append(SynthesisStep.AWAITING_AUTHORIZATION)
                 final_status = "success"
             else:
                 await skill_store.update_skill_status(skill.id, SkillStatus.SANDBOX_FAILED)
@@ -243,7 +258,15 @@ class SkillSynthesizer:
                 step=SynthesisStep.COMPLETE,
                 message=(
                     f"Synthesis complete — skill '{skill.name}' "
-                    + ("promoted to ACTIVE" if final_status == "success" else "failed sandbox")
+                    + (
+                        (
+                            "promoted to ACTIVE"
+                            if skill.status == SkillStatus.ACTIVE
+                            else "staged for authorization"
+                        )
+                        if final_status == "success"
+                        else "failed sandbox"
+                    )
                 ),
                 progress_pct=100,
                 detail={"result": result.model_dump()},
