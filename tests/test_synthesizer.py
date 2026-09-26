@@ -267,9 +267,9 @@ class TestSynthesisPipeline:
             patch("axiom.synthesis.synthesizer.skill_store.register_skill",
                   new_callable=AsyncMock, return_value=mock_skill),
             patch("axiom.synthesis.synthesizer.skill_store.promote_skill",
-                  new_callable=AsyncMock),
+                  new_callable=AsyncMock) as mock_promote,
             patch("axiom.synthesis.synthesizer.skill_store.update_skill_status",
-                  new_callable=AsyncMock),
+                  new_callable=AsyncMock) as mock_update_status,
             patch("axiom.sandbox.evaluator.sandbox_evaluator.evaluate",
                   new_callable=AsyncMock, return_value=mock_report),
         ):
@@ -283,6 +283,12 @@ class TestSynthesisPipeline:
         assert SynthesisStep.GENERATING_SCHEMA in steps_seen
         assert SynthesisStep.GENERATING_IMPLEMENTATION in steps_seen
         assert SynthesisStep.COMPLETE in steps_seen
+        assert SynthesisStep.AWAITING_AUTHORIZATION in steps_seen
+        assert mock_skill.status == SkillStatus.READY_FOR_AUTHORIZATION
+        mock_promote.assert_not_awaited()
+        mock_update_status.assert_awaited_with(
+            mock_skill.id, SkillStatus.READY_FOR_AUTHORIZATION
+        )
 
     @pytest.mark.asyncio
     async def test_duplicate_detection_short_circuits_synthesis(
