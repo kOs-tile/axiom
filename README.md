@@ -23,6 +23,8 @@
 
 `axiom.integrations.kcc.build_kcc_authorization_bundle(...)` exports only ACTIVE or `READY_FOR_AUTHORIZATION` skills selected for the task, plus a KCC intent containing the deterministic capability IDs. The bundle explicitly sets `authorization.granted=false`; KCC must scan, audit, and compile before an execution capsule exists.
 
+The bundle now also contains an `axiom.capability-plan.v0` planning artifact. Its `plan_fingerprint` binds the exact exported capability snapshot, task intent, selected skill IDs, and versions. This fingerprint is audit evidence for **why AXIOM proposed that capability surface**; it is not authority. `verify_kcc_authorization_bundle(...)` detects plan/snapshot/intent tampering before handoff.
+
 
 ---
 
@@ -323,7 +325,7 @@ Walks the Python AST of generated code looking for:
 | `__import__()` | Dynamic import bypass |
 | `__class__`, `__subclasses__`, `f_globals` | Sandbox escape via introspection |
 
-Allowed imports: `math`, `statistics`, `json`, `datetime`, `re`, `collections`, `numpy`, `pandas`, `scipy`, and other pure computation libraries.
+The in-process allowlist is deliberately small and standard-library focused: `math`, `statistics`, `datetime`, `collections`, `itertools`, `re`, `json`, `decimal`, `fractions`, `random`, `uuid`, `enum`, `dataclasses`, `copy`, `hashlib`, `base64`, and `calendar`. Larger data libraries belong in a separate process/container executor rather than being implicitly trusted inside RestrictedPython.
 
 ### Layer 2 — Bandit Static Analysis
 
@@ -343,7 +345,8 @@ Compiled with `RestrictedPython.compile_restricted()` which:
 ```
 Skill code runs with:
   ✓ Pure computation (math, statistics, json, datetime, re, collections)
-  ✓ Read-only numpy/pandas operations
+  ✓ Explicitly allowlisted standard-library computation
+  ✗ NumPy/pandas/SciPy inside the in-process RestrictedPython executor
   ✗ File system (read or write)
   ✗ Network access (sockets, HTTP, DNS)
   ✗ Subprocess or shell execution
@@ -455,7 +458,8 @@ Key settings:
 | `DEDUP_COSINE_THRESHOLD` | `0.92` | Similarity above which synthesis is skipped |
 | `SANDBOX_MEMORY_LIMIT_MB` | `256` | Max memory per sandbox run |
 | `SANDBOX_TIMEOUT_SECONDS` | `30` | Max execution time per sandbox run |
-| `PROMOTION_MIN_SUCCESS_RATE` | `0.8` | Minimum sandbox/test pass rate for staging |\n| `AUTO_PROMOTE_SYNTHESIZED_SKILLS` | `false` | Explicit opt-in to bypass the KCC authorization staging state |
+| `PROMOTION_MIN_SUCCESS_RATE` | `0.8` | Minimum sandbox/test pass rate for staging |
+| `AUTO_PROMOTE_SYNTHESIZED_SKILLS` | `false` | Explicit opt-in to bypass the KCC authorization staging state |
 | `DECAY_SUCCESS_THRESHOLD` | `0.70` | Success rate below which skill is flagged |
 | `DECAY_IDLE_DAYS` | `30` | Days of inactivity before deprecation |
 
