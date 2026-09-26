@@ -19,6 +19,11 @@
 - RestrictedPython is treated as one defense layer, not a production isolation guarantee. Unknown imports fail closed and the in-process import trusted computing base is intentionally small.
 
 
+### KCC handoff
+
+`axiom.integrations.kcc.export_kcc_snapshot(...)` exports promoted ACTIVE skills as an MCP-shaped observed capability surface. AXIOM intentionally emits no read/write authority annotations from sandbox success alone; KCC independently classifies/audits the capability and decides whether it can enter a task-scoped capsule.
+
+
 ---
 
 ## The Static Tool Problem
