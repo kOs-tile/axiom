@@ -169,14 +169,29 @@ def run(x: float) -> dict:
         result = checker.check("def run(): return {}")
         assert isinstance(result, PermissionCheckResult)
 
-    def test_warnings_for_unlisted_but_allowed_module(self, checker):
-        """A module not in the explicit allowlist should warn but not fail."""
+    def test_unlisted_module_fails_closed(self, checker):
+        """Unknown imports expand the trusted computing base and must be rejected."""
         code = "import some_unknown_lib\ndef run(): return {}"
         result = checker.check(code)
-        # Failures only for explicitly forbidden modules
-        forbidden_violations = [v for v in result.violations if v.kind == "forbidden_import"]
-        assert len(forbidden_violations) == 0
-        assert result.warning_count >= 1
+        assert not result.passed
+        assert any(v.kind == "unapproved_import" for v in result.violations)
+
+    @pytest.mark.parametrize("module", ["operator", "functools", "string"])
+    def test_guard_bypass_modules_are_blocked(self, checker, module):
+        code = f"import {module}\ndef run(): return {{}}"
+        result = checker.check(code)
+        assert not result.passed
+        assert any(v.kind == "forbidden_import" for v in result.violations)
+
+    def test_runtime_import_hook_blocks_unapproved_module(self, evaluator):
+        from RestrictedPython import compile_restricted
+        from axiom.sandbox.evaluator import SAFE_GLOBALS
+
+        code = "import pathlib\ndef run(): return {}"
+        restricted_code = compile_restricted(code, filename="<test>", mode="exec")
+        glb = dict(SAFE_GLOBALS)
+        with pytest.raises(ImportError):
+            exec(restricted_code, glb)  # noqa: S102
 
 
 # ── Full Evaluation Pipeline Tests ────────────────────────────────────────────
