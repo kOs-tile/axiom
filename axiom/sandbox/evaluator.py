@@ -27,6 +27,7 @@ from RestrictedPython import (
     safe_globals,
 )
 from RestrictedPython.Guards import (
+    full_write_guard,
     guarded_getattr,
     guarded_getitem,
     guarded_iter,
@@ -43,7 +44,7 @@ from axiom.models import (
     TestCase,
     TestResult,
 )
-from axiom.sandbox.permission_checker import permission_checker
+from axiom.sandbox.permission_checker import ALLOWED_IMPORTS, permission_checker
 from axiom.sandbox.security_scanner import bandit_scanner
 
 # ── Restricted builtins allowlist ─────────────────────────────────────────────
@@ -72,19 +73,12 @@ SAFE_BUILTINS = {
     "dict": dict,
     "set": set,
     "tuple": tuple,
-    "type": type,
     "isinstance": isinstance,
-    "issubclass": issubclass,
-    "hasattr": hasattr,
-    "getattr": getattr,
-    "setattr": setattr,
     "repr": repr,
     "hash": hash,
-    "id": id,
     "hex": hex,
     "oct": oct,
     "bin": bin,
-    "format": format,
     "any": any,
     "all": all,
     "next": next,
@@ -94,10 +88,26 @@ SAFE_BUILTINS = {
     "eval": None,
     "exec": None,
     "compile": None,
-    "__import__": None,
     "open": None,
     "input": None,
 }
+
+
+def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+    """Import only explicitly reviewed top-level modules.
+
+    RestrictedPython does not provide an import policy. Once __import__ is
+    exposed, every reachable module becomes part of the trusted computing base.
+    """
+    if level != 0:
+        raise ImportError("relative imports are not allowed")
+    top_module = name.split(".", 1)[0]
+    if top_module not in ALLOWED_IMPORTS:
+        raise ImportError(f"{top_module!r} may not be imported")
+    return __import__(name, globals, locals, fromlist, level)
+
+
+SAFE_BUILTINS["__import__"] = _guarded_import
 
 SAFE_GLOBALS = {
     **safe_globals,
@@ -106,7 +116,7 @@ SAFE_GLOBALS = {
     "_getitem_": guarded_getitem,
     "_getiter_": guarded_iter,
     "_inplacevar_": lambda op, x, y: x,
-    "_write_": lambda x: x,
+    "_write_": full_write_guard,
     "_unpack_sequence_": guarded_unpack_sequence,
 }
 
