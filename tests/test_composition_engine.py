@@ -200,12 +200,12 @@ class TestHandoffMap:
     def test_exact_name_mapping(self):
         """Output field 'prices' maps to input field 'prices' by exact name."""
         skill_a = make_skill(
-            "a",
+            "skill_a",
             input_fields=[("x", "float")],
             output_fields=[("prices", "list[float]")],
         )
         skill_b = make_skill(
-            "b",
+            "skill_b",
             input_fields=[("prices", "list[float]")],
             output_fields=[("result", "float")],
         )
