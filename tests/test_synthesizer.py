@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from axiom.models import (
+    EvaluationReport,
     Skill,
     SkillCategory,
     SkillStatus,
@@ -243,10 +244,12 @@ class TestSynthesisPipeline:
             status=SkillStatus.SANDBOX_PENDING,
             implementation=MOCK_IMPLEMENTATION,
         )
-        mock_report = MagicMock()
-        mock_report.promotion_recommended = True
-        mock_report.failure_reason = None
-        mock_report.model_dump.return_value = {}
+        mock_report = EvaluationReport(
+            skill_id=mock_skill.id,
+            skill_name=mock_skill.name,
+            promotion_recommended=True,
+            failure_reason=None,
+        )
 
         with (
             patch.object(synthesizer, "_analyze_task", new_callable=AsyncMock,
