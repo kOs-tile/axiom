@@ -235,8 +235,7 @@ class SynthesisResult(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-# Rebuild to resolve forward references
-SynthesisResult.model_rebuild()
+# Forward reference is rebuilt after EvaluationReport is defined.
 
 
 # ── Sandbox / Evaluation ──────────────────────────────────────────────────────
@@ -302,6 +301,10 @@ class EvaluationReport(BaseModel):
         total = self.tests_passed + self.tests_failed
         self.pass_rate = (self.tests_passed / total) if total > 0 else 0.0
         return self
+
+
+# Resolve SynthesisResult.evaluation_report only after EvaluationReport exists.
+SynthesisResult.model_rebuild()
 
 
 # ── API Request / Response helpers ────────────────────────────────────────────
