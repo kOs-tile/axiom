@@ -274,7 +274,9 @@ class TestSynthesisPipeline:
                   new_callable=AsyncMock, return_value=mock_report),
         ):
             steps_seen: list[SynthesisStep] = []
+            events = []
             async for event in synthesizer.synthesize(mock_synthesis_request):
+                events.append(event)
                 steps_seen.append(event.step)
 
         assert SynthesisStep.ANALYZING in steps_seen
@@ -284,10 +286,12 @@ class TestSynthesisPipeline:
         assert SynthesisStep.GENERATING_IMPLEMENTATION in steps_seen
         assert SynthesisStep.COMPLETE in steps_seen
         assert SynthesisStep.AWAITING_AUTHORIZATION in steps_seen
-        assert mock_skill.status == SkillStatus.READY_FOR_AUTHORIZATION
+        result = events[-1].detail["result"]
+        assert result["skill"]["status"] == SkillStatus.READY_FOR_AUTHORIZATION.value
         mock_promote.assert_not_awaited()
+        staged_skill_id = mock_update_status.await_args.args[0]
         mock_update_status.assert_awaited_with(
-            mock_skill.id, SkillStatus.READY_FOR_AUTHORIZATION
+            staged_skill_id, SkillStatus.READY_FOR_AUTHORIZATION
         )
 
     @pytest.mark.asyncio
