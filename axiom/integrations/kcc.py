@@ -7,9 +7,22 @@ scan, classify, audit, and bind into a task-scoped execution capsule.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Iterable
 
 from axiom.models import IOSchema, Skill, SkillChain, SkillStatus
+
+
+def _digest(value: Any) -> str:
+    canonical = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 _JSON_TYPE_MAP = {
@@ -154,24 +167,39 @@ def build_kcc_authorization_bundle(
     if constraints:
         intent_constraints.update(constraints)
 
+    intent = {
+        "task": task_description,
+        "capabilities": [
+            _kcc_capability_id(skill, server_name) for skill in selected
+        ],
+        "ttl_seconds": max(1, min(int(ttl_seconds), 86400)),
+        "constraints": intent_constraints,
+    }
+    authorization = {
+        "granted": False,
+        "requires_kcc_compile": True,
+        "reason": (
+            "AXIOM selected and evaluated capability code; "
+            "execution authority remains a KCC decision."
+        ),
+    }
+    planning = {
+        "version": "axiom.capability-plan.v0",
+        "snapshot_digest": _digest(snapshot),
+        "intent_digest": _digest(intent),
+        "selected_skill_ids": [skill.id for skill in selected],
+        "selected_skill_versions": {
+            skill.id: skill.version for skill in selected
+        },
+        "authority_granted": False,
+    }
+    planning["plan_fingerprint"] = _digest(planning)
+
     return {
         "snapshot": snapshot,
-        "intent": {
-            "task": task_description,
-            "capabilities": [
-                _kcc_capability_id(skill, server_name) for skill in selected
-            ],
-            "ttl_seconds": max(1, min(int(ttl_seconds), 86400)),
-            "constraints": intent_constraints,
-        },
-        "authorization": {
-            "granted": False,
-            "requires_kcc_compile": True,
-            "reason": (
-                "AXIOM selected and evaluated capability code; "
-                "execution authority remains a KCC decision."
-            ),
-        },
+        "intent": intent,
+        "planning": planning,
+        "authorization": authorization,
     }
 
 
@@ -197,3 +225,35 @@ def skill_chain_to_kcc_bundle(
         ttl_seconds=ttl_seconds,
         constraints=chain_constraints,
     )
+
+
+
+def verify_kcc_authorization_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Verify AXIOM planning evidence without treating it as authority."""
+    planning = bundle.get("planning") or {}
+    body = dict(planning)
+    claimed = body.pop("plan_fingerprint", None)
+    snapshot = bundle.get("snapshot") or {}
+    intent = bundle.get("intent") or {}
+    authorization = bundle.get("authorization") or {}
+
+    checks = [
+        (
+            "planning_version",
+            body.get("version") == "axiom.capability-plan.v0",
+        ),
+        ("plan_integrity", claimed == _digest(body)),
+        ("snapshot_digest", body.get("snapshot_digest") == _digest(snapshot)),
+        ("intent_digest", body.get("intent_digest") == _digest(intent)),
+        ("planning_non_authority", body.get("authority_granted") is False),
+        ("bundle_non_authority", authorization.get("granted") is False),
+        (
+            "requires_kcc_compile",
+            authorization.get("requires_kcc_compile") is True,
+        ),
+    ]
+    return {
+        "valid": all(ok for _, ok in checks),
+        "plan_fingerprint": claimed,
+        "checks": [{"name": name, "ok": ok} for name, ok in checks],
+    }
