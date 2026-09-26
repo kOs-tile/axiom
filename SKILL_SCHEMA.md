@@ -93,7 +93,8 @@ metadata envelope that enables semantic search, composition, and performance tra
 | `draft` | Registered but not yet evaluated |
 | `sandbox_pending` | Awaiting sandbox evaluation |
 | `sandbox_failed` | Failed security scan or unit tests |
-| `active` | Promoted and available for use |
+| `ready_for_authorization` | Evaluation passed; no runtime authority has been granted yet |
+| `active` | Explicitly promoted and available for use |
 | `deprecated` | Not invoked in 30+ days |
 | `flagged` | Success rate dropped below 70% threshold |
 
