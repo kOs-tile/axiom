@@ -1,6 +1,6 @@
 # AXIOM
 
-> **Status — Legacy research prototype.** AXIOM is preserved as an earlier capability/skill-composition experiment. Active least-authority work has moved to [KAVI Capability Compiler](https://github.com/kOs-tile/kavi-capability-compiler). This repository is not presented as a production security boundary.
+> **Status — Research-active skill foundry.** AXIOM is being narrowed to skill discovery, composition, synthesis, and evaluation. [KAVI Capability Compiler](https://github.com/kOs-tile/kavi-capability-compiler) owns least-authority compilation; AXIOM does not compete with or replace that authority layer.
 
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://python.org)
@@ -10,6 +10,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Living skill marketplace and autonomous skill synthesizer for the Hermes / Kavi Claw agent framework.**
+
+## Boundary with KCC
+
+- **AXIOM:** proposes and evaluates executable skills.
+- **KCC:** decides the minimum authority an execution may receive and emits a bounded capsule.
+- A skill passing AXIOM evaluation does **not** imply it should receive runtime authority.
+- RestrictedPython is treated as one defense layer, not a production isolation guarantee. Unknown imports fail closed and the in-process import trusted computing base is intentionally small.
+
 
 ---
 
