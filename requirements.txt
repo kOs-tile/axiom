@@ -24,7 +24,7 @@ openai>=1.30.0  # OpenAI embeddings + DeepSeek-compatible client
 networkx>=3.3
 
 # Sandbox execution
-RestrictedPython>=7.1
+RestrictedPython>=8.5
 
 # Security scanning
 bandit>=1.7.9
