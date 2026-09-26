@@ -85,6 +85,13 @@ class AXIOMSettings(BaseSettings):
         description="Minimum pass rate in sandbox to promote a skill",
     )
     promotion_min_test_cases: int = Field(default=3, description="Minimum number of test cases that must pass")
+    auto_promote_synthesized_skills: bool = Field(
+        default=False,
+        description=(
+            "If true, sandbox-passing synthesized skills become ACTIVE immediately. "
+            "Default false keeps them READY_FOR_AUTHORIZATION until an explicit authority step."
+        ),
+    )
 
     # ── Decay Monitor ─────────────────────────────────────────────────────────
     decay_min_invocations: int = Field(default=50, description="Minimum invocations before decay check")
