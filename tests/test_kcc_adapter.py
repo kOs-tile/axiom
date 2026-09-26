@@ -3,6 +3,7 @@ from axiom.integrations.kcc import (
     export_kcc_snapshot,
     skill_chain_to_kcc_bundle,
     skill_to_mcp_tool,
+    verify_kcc_authorization_bundle,
 )
 from axiom.models import IOSchema, SchemaField, Skill, SkillChain, SkillStatus
 
@@ -103,3 +104,72 @@ def test_skill_chain_bundle_exposes_only_chain_surface():
     assert bundle["intent"]["constraints"]["axiom_chain_id"] == chain.id
     assert bundle["intent"]["constraints"]["max_chain_length"] == 2
     assert bundle["authorization"]["granted"] is False
+
+
+
+def test_capability_plan_fingerprint_is_order_deterministic():
+    first = make_skill("alpha_skill", SkillStatus.ACTIVE)
+    second = make_skill("beta_skill", SkillStatus.READY_FOR_AUTHORIZATION)
+
+    a = build_kcc_authorization_bundle(
+        [first, second],
+        task_description="Use a bounded two-skill plan",
+    )
+    b = build_kcc_authorization_bundle(
+        [second, first],
+        task_description="Use a bounded two-skill plan",
+    )
+
+    assert a["planning"]["plan_fingerprint"] == b["planning"]["plan_fingerprint"]
+    assert a["planning"]["authority_granted"] is False
+    assert verify_kcc_authorization_bundle(a)["valid"] is True
+
+
+def test_capability_plan_fingerprint_changes_with_intent():
+    skill = make_skill("bounded_skill", SkillStatus.ACTIVE)
+
+    first = build_kcc_authorization_bundle(
+        [skill],
+        task_description="Read one bounded payload",
+        ttl_seconds=120,
+    )
+    second = build_kcc_authorization_bundle(
+        [skill],
+        task_description="Read one bounded payload",
+        ttl_seconds=300,
+    )
+
+    assert first["planning"]["plan_fingerprint"] != second["planning"]["plan_fingerprint"]
+
+
+def test_capability_plan_tamper_fails_verification():
+    skill = make_skill("bounded_skill", SkillStatus.ACTIVE)
+    bundle = build_kcc_authorization_bundle(
+        [skill],
+        task_description="Read one bounded payload",
+    )
+    bundle["intent"]["capabilities"].append("mcp:axiom-skills:injected")
+
+    result = verify_kcc_authorization_bundle(bundle)
+
+    assert result["valid"] is False
+    assert any(
+        check["name"] == "intent_digest" and not check["ok"]
+        for check in result["checks"]
+    )
+
+
+def test_skill_chain_planning_fingerprint_binds_chain_constraints():
+    first = make_skill("fetch_bounded", SkillStatus.ACTIVE)
+    second = make_skill("transform_bounded", SkillStatus.READY_FOR_AUTHORIZATION)
+    chain = SkillChain(
+        task_description="Fetch then transform bounded data",
+        skills=[first, second],
+        handoff_map=[{"value": "value"}],
+    )
+
+    bundle = skill_chain_to_kcc_bundle(chain)
+
+    assert bundle["intent"]["constraints"]["axiom_chain_id"] == chain.id
+    assert verify_kcc_authorization_bundle(bundle)["valid"] is True
+    assert len(bundle["planning"]["plan_fingerprint"]) == 64
