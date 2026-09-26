@@ -464,3 +464,8 @@ Key settings:
 ## License
 
 MIT © [Onur Kavi](https://github.com/kOs-tile)
+
+
+## Validation gate
+
+AXIOM is evaluated as a capability planner, not by registry size. The primary safety metric is **authority leakage rate**: a synthesized/evaluated capability must never become executable merely because it passed sandbox tests. The benchmark plan is in [`docs/VALIDATION.md`](docs/VALIDATION.md).
