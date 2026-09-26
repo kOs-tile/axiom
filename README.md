@@ -9,7 +9,7 @@
 [![Hermes Compatible](https://img.shields.io/badge/Hermes-compatible-FF6B35)](https://github.com/kOs-tile)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Living skill marketplace and autonomous skill synthesizer for the Hermes / Kavi Claw agent framework.**
+**KCC-aware capability planner, composer, and skill foundry for Hermes / KAVI agents.**
 
 ## Boundary with KCC
 
@@ -21,7 +21,7 @@
 
 ### KCC handoff
 
-`axiom.integrations.kcc.export_kcc_snapshot(...)` exports promoted ACTIVE skills as an MCP-shaped observed capability surface. AXIOM intentionally emits no read/write authority annotations from sandbox success alone; KCC independently classifies/audits the capability and decides whether it can enter a task-scoped capsule.
+`axiom.integrations.kcc.build_kcc_authorization_bundle(...)` exports only ACTIVE or `READY_FOR_AUTHORIZATION` skills selected for the task, plus a KCC intent containing the deterministic capability IDs. The bundle explicitly sets `authorization.granted=false`; KCC must scan, audit, and compile before an execution capsule exists.
 
 
 ---
@@ -37,8 +37,10 @@ every skill by hand.
 
 - Already have a skill for the task? → AXIOM finds and ranks it in milliseconds.
 - Close but not quite? → AXIOM chains existing skills into a novel composition.
-- No match at all? → AXIOM synthesizes a new skill with DeepSeek-V3, runs it through
-  a security sandbox, and promotes it to the live registry — all without human intervention.
+- No match at all? → AXIOM can synthesize a new skill with DeepSeek, evaluate it in
+  a restricted sandbox, and stage it as `READY_FOR_AUTHORIZATION`.
+- Runtime authority is a separate step: AXIOM emits the minimal candidate surface and
+  KCC compiles the task-scoped execution capsule.
 
 Skills accumulate. Skills are monitored. Skills that degrade are flagged and replaced.
 The registry grows smarter every time Hermes asks it a question.
@@ -80,7 +82,7 @@ The registry grows smarter every time Hermes asks it a question.
 │   │  Step 5 ──► Generate Python implementation                           │  │
 │   │  Step 6 ──► Generate unit test cases                                 │  │
 │   │  Step 7 ──► Sandbox: AST check + bandit scan + RestrictedPython exec │  │
-│   │  Step 8 ──► Promote to ACTIVE registry if pass rate ≥ 80%           │  │
+│   │  Step 8 ──► Stage for KCC authorization if pass rate ≥ 80%           │  │
 │   │                                                                      │  │
 │   │  ◄── streams progress via WebSocket (/ws/synthesize) ──────────────  │  │
 │   └───────────────────────────┬──────────────────────────────────────────┘  │
@@ -126,8 +128,8 @@ User task description
         │
         ▼
 ┌───────────────────┐
-│  Registry         │  Promote to ACTIVE if pass rate ≥ 80%
-│  Promotion        │  Skills are now searchable and chainable
+│  Registry         │  Stage evaluated skill for authorization
+│  Authority        │  KCC decides task-scoped execution authority
 └───────────────────┘
         │
         ▼
@@ -230,7 +232,7 @@ async for event in axiom.synthesize_stream(
     print(f"[{event.progress_pct:3d}%] {event.step.value}: {event.message}")
     if event.step.value == "complete":
         result = event.detail["result"]
-        print(f"Skill '{result['skill']['name']}' is now ACTIVE")
+        print(f"Skill '{result['skill']['name']}' status={result['skill']['status']}")
         break
 ```
 
@@ -305,7 +307,7 @@ See **[SKILL_SCHEMA.md](SKILL_SCHEMA.md)** for the full specification.
 
 ## Security
 
-AXIOM applies three independent security layers to every synthesized skill before promotion:
+AXIOM applies three security/evaluation layers before a synthesized skill may be staged for authorization:
 
 ### Layer 1 — AST Permission Checker
 
@@ -453,7 +455,7 @@ Key settings:
 | `DEDUP_COSINE_THRESHOLD` | `0.92` | Similarity above which synthesis is skipped |
 | `SANDBOX_MEMORY_LIMIT_MB` | `256` | Max memory per sandbox run |
 | `SANDBOX_TIMEOUT_SECONDS` | `30` | Max execution time per sandbox run |
-| `PROMOTION_MIN_SUCCESS_RATE` | `0.8` | Minimum test pass rate for promotion |
+| `PROMOTION_MIN_SUCCESS_RATE` | `0.8` | Minimum sandbox/test pass rate for staging |\n| `AUTO_PROMOTE_SYNTHESIZED_SKILLS` | `false` | Explicit opt-in to bypass the KCC authorization staging state |
 | `DECAY_SUCCESS_THRESHOLD` | `0.70` | Success rate below which skill is flagged |
 | `DECAY_IDLE_DAYS` | `30` | Days of inactivity before deprecation |
 
