@@ -175,7 +175,7 @@ class TestCapabilityResolver:
             return_value=skills_with_sims,
         ):
             response = await resolver.resolve(
-                ResolveRequest(task_description="task", top_k=3)
+                ResolveRequest(task_description="test task", top_k=3)
             )
 
         assert len(response.candidates) <= 3
@@ -195,7 +195,7 @@ class TestCapabilityResolver:
         ):
             response = await resolver.resolve(
                 ResolveRequest(
-                    task_description="task",
+                    task_description="test task",
                     top_k=10,
                     min_confidence=0.5,
                 )
@@ -219,7 +219,7 @@ class TestCapabilityResolver:
             return_value=skills_with_sims,
         ):
             response = await resolver.resolve(
-                ResolveRequest(task_description="task", top_k=5)
+                ResolveRequest(task_description="test task", top_k=5)
             )
 
         ranks = [r.rank for r in response.candidates]
