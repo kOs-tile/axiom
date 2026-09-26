@@ -27,11 +27,10 @@ from RestrictedPython import (
 )
 from RestrictedPython.Guards import (
     full_write_guard,
-    guarded_getattr,
-    guarded_getitem,
-    guarded_iter,
+    guarded_iter_unpack_sequence,
     guarded_unpack_sequence,
     safe_builtins,
+    safer_getattr,
 )
 
 from axiom.config import settings
@@ -108,13 +107,37 @@ def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 SAFE_BUILTINS["__import__"] = _guarded_import
 
+
+def _guarded_getitem(obj, key):
+    """Block underscore-based reflective keys while allowing normal indexing."""
+    if isinstance(key, str) and key.startswith("_"):
+        raise KeyError("restricted key access")
+    return obj[key]
+
+
+def _inplacevar(op, x, y):
+    """RestrictedPython hook for a small, explicit set of augmented assignments."""
+    operations = {
+        "+=": lambda a, b: a + b,
+        "-=": lambda a, b: a - b,
+        "*=": lambda a, b: a * b,
+        "/=": lambda a, b: a / b,
+        "//=": lambda a, b: a // b,
+        "%=": lambda a, b: a % b,
+    }
+    if op not in operations:
+        raise ValueError(f"unsupported augmented assignment: {op}")
+    return operations[op](x, y)
+
+
 SAFE_GLOBALS = {
     **safe_globals,
     "__builtins__": SAFE_BUILTINS,
-    "_getattr_": guarded_getattr,
-    "_getitem_": guarded_getitem,
-    "_getiter_": guarded_iter,
-    "_inplacevar_": lambda op, x, y: x,
+    "_getattr_": safer_getattr,
+    "_getitem_": _guarded_getitem,
+    "_getiter_": iter,
+    "_iter_unpack_sequence_": guarded_iter_unpack_sequence,
+    "_inplacevar_": _inplacevar,
     "_write_": full_write_guard,
     "_unpack_sequence_": guarded_unpack_sequence,
 }
