@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS skills (
     implementation      TEXT DEFAULT '',
     entry_point         TEXT DEFAULT 'run',
     status              TEXT DEFAULT 'draft'
-                            CHECK (status IN ('draft','sandbox_pending','sandbox_failed','active','deprecated','flagged')),
+                            CHECK (status IN ('draft','sandbox_pending','sandbox_failed','ready_for_authorization','active','deprecated','flagged')),
     version             TEXT DEFAULT '1.0.0',
     author              TEXT DEFAULT 'axiom-synthesizer',
     hermes_compatible   BOOLEAN DEFAULT TRUE,
