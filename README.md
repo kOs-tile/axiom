@@ -473,3 +473,5 @@ MIT © [Onur Kavi](https://github.com/kOs-tile)
 ## Validation gate
 
 AXIOM is evaluated as a capability planner, not by registry size. The primary safety metric is **authority leakage rate**: a synthesized/evaluated capability must never become executable merely because it passed sandbox tests. The benchmark plan is in [`docs/VALIDATION.md`](docs/VALIDATION.md).
+
+Current regression evidence verifies that AXIOM authorization bundles remain explicitly non-authoritative (`authorization.granted=false`), failed/draft skills are excluded from the candidate surface, capability-plan fingerprints are deterministic, and intent tampering fails bundle verification. These tests validate the handoff contract; they are not yet the planned 100-task/200+ skill benchmark.
