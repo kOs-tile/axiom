@@ -11,19 +11,17 @@ that become executable without an explicit authority step.
 
 Target: **0**.
 
-## Planned benchmark corpus v0.1
+## Executable resolver benchmark corpus v0.1
 
-- 100 representative task descriptions
-- 200+ candidate skills with overlapping descriptions
-- exact-match tasks
-- composition-required tasks
-- no-solution tasks
-- adversarial/ambiguous skill descriptions
-- sandbox-pass but high-authority candidates
-- duplicate skills
-- incompatible I/O chains
-- synthesized candidates
-- task changes that should alter the minimal capability set
+- 100 task descriptions
+- 240 active skills
+- 70 direct-match tasks
+- 20 deliberately ambiguous resolver tasks
+- 10 no-solution tasks
+- deterministic offline lexical retrieval stub feeding the real `CapabilityResolver.resolve()` ranking path
+- real AXIOM→KCC authorization-bundle construction and verification
+
+The v0.1 corpus intentionally does **not** claim embedding/pgvector retrieval quality, composition success, or synthesis quality. Those remain separate evidence tracks.
 
 ## Metrics
 
@@ -48,7 +46,16 @@ The current test suite verifies the KCC handoff boundary directly:
 - capability-plan fingerprints are deterministic across equivalent input ordering;
 - intent tampering invalidates bundle verification.
 
-This is contract-level regression evidence. The 100-task / 200+ skill corpus above remains planned and must not be presented as a completed benchmark until an executable benchmark and recorded results exist.
+The executable resolver corpus is also regression-locked in CI. Current checkpoint:
+
+- registry size: **240 skills**
+- tasks: **100**
+- resolvable tasks: **90/90 expected top-1 selections**
+- no-solution tasks: **10/10 correctly return no candidate**
+- valid AXIOM→KCC bundles: **90/90**
+- observed authority leaks: **0**
+
+This is deterministic offline resolver/handoff evidence. It does not establish production semantic-search quality because the benchmark replaces external embedding/pgvector retrieval with an in-memory lexical scorer.
 
 ## Exit gate
 
